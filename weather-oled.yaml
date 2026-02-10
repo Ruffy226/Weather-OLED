@@ -5,8 +5,7 @@ esphome:
 esp32:
   board: seeed_xiao_esp32c6
   framework:
-    type: esp-idf
-    version: recommended
+    type: arduino
 
 logger:
 
@@ -31,18 +30,14 @@ captive_portal:
 spi:
   clk_pin: GPIO19
   mosi_pin: GPIO18
-  # Force software (bitbang) SPI to bypass ESP32-C6 hardware SPI driver issues
-  interface: software
   id: spi_bus
 
-# Minimal display config for debugging — no lambda, no font, no backlight control
-# Just SPI + display driver + test card to isolate the issue
 display:
   - platform: ili9xxx
     model: ILI9341
-    cs_pin: GPIO0
+    cs_pin: GPIO21
     dc_pin: GPIO1
     reset_pin: GPIO2
-    data_rate: 2MHz
+    data_rate: 4MHz
     show_test_card: true
     spi_id: spi_bus
