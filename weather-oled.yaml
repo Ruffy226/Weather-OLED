@@ -33,28 +33,37 @@ spi:
   mosi_pin: GPIO18
   id: spi_bus
 
+# Backlight control — drive HIGH to turn on the display backlight
+output:
+  - platform: ledc
+    pin: GPIO21
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: "Display Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+
 display:
   - platform: ili9xxx
     model: ILI9341
-    cs_pin: GPIO22
+    cs_pin: GPIO0
     dc_pin: GPIO1
-    reset_pin: GPIO17
+    reset_pin: GPIO2
     color_palette: 8BIT
     color_order: BGR
     rotation: 270
     invert_colors: false
     data_rate: 20MHz
-    # Removed spi_mode: MODE3 — ILI9341 uses MODE0 (the default).
-    # MODE3 was preventing SPI communication, causing the blank screen.
     show_test_card: true
     spi_id: spi_bus
     dimensions:
       width: 240
       height: 320
     lambda: |-
-      // Draw a black background so content is visible
       it.fill(Color(0, 0, 0));
-      // Simple test text in white
       it.printf(10, 10, id(default_font), Color(255, 255, 255), "Weather OLED");
       it.printf(10, 40, id(default_font), Color(0, 255, 0), "Display OK!");
 
