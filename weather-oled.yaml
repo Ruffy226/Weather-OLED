@@ -56,7 +56,8 @@ display:
     color_order: BGR
     rotation: 270
     invert_colors: false
-    data_rate: 20MHz
+    # Start at 10MHz for reliable bring-up; can increase to 20-40MHz once working
+    data_rate: 10MHz
     show_test_card: true
     spi_id: spi_bus
     dimensions:
