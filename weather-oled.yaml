@@ -31,6 +31,8 @@ captive_portal:
 spi:
   clk_pin: GPIO19
   mosi_pin: GPIO18
+  # Force software (bitbang) SPI to bypass ESP32-C6 hardware SPI driver issues
+  force_sw: true
   id: spi_bus
 
 # Minimal display config for debugging — no lambda, no font, no backlight control
