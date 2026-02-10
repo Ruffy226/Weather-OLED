@@ -33,42 +33,14 @@ spi:
   mosi_pin: GPIO18
   id: spi_bus
 
-# Backlight control — drive HIGH to turn on the display backlight
-output:
-  - platform: ledc
-    pin: GPIO21
-    id: backlight_pwm
-
-light:
-  - platform: monochromatic
-    output: backlight_pwm
-    name: "Display Backlight"
-    id: backlight
-    restore_mode: ALWAYS_ON
-
+# Minimal display config for debugging — no lambda, no font, no backlight control
+# Just SPI + display driver + test card to isolate the issue
 display:
   - platform: ili9xxx
     model: ILI9341
     cs_pin: GPIO0
     dc_pin: GPIO1
     reset_pin: GPIO2
-    color_palette: 8BIT
-    color_order: BGR
-    rotation: 270
-    invert_colors: false
-    # Start at 10MHz for reliable bring-up; can increase to 20-40MHz once working
-    data_rate: 10MHz
+    data_rate: 2MHz
     show_test_card: true
     spi_id: spi_bus
-    dimensions:
-      width: 240
-      height: 320
-    lambda: |-
-      it.fill(Color(0, 0, 0));
-      it.printf(10, 10, id(default_font), Color(255, 255, 255), "Weather OLED");
-      it.printf(10, 40, id(default_font), Color(0, 255, 0), "Display OK!");
-
-font:
-  - file: "gfonts://Roboto"
-    id: default_font
-    size: 20
