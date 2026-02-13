@@ -70,7 +70,7 @@ font:
     size: 14
   - file: "gfonts://Roboto"
     id: font_medium
-    size: 20
+    size: 22
   # MDI weather icons — only the glyphs we actually use are compiled in
   - file: "materialdesignicons-webfont.ttf"
     id: font_icons
