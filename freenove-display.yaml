@@ -3,7 +3,7 @@ esphome:
   friendly_name: Freenove Display
 
 esp32:
-  board: esp32dev
+  board: esp32-s3-devkitc-1
   framework:
     type: arduino
 
@@ -26,3 +26,39 @@ wifi:
     password: !secret fallback_password
 
 captive_portal:
+
+# SPI bus shared by display (and touch if added later)
+# Wiring:
+#   Display SCK  -> GPIO12
+#   Display MOSI -> GPIO11
+#   Display MISO -> GPIO13  (optional for display-only, needed for touch)
+#   Display CS   -> GPIO10
+#   Display DC   -> GPIO9
+#   Display RST  -> GPIO8
+#   Display LED  -> 3.3V
+spi:
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
+  miso_pin: GPIO13
+  id: spi_bus
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_large
+    size: 28
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 16
+
+display:
+  - platform: ili9xxx
+    model: ILI9341
+    spi_id: spi_bus
+    cs_pin: GPIO10
+    dc_pin: GPIO9
+    reset_pin: GPIO8
+    rotation: 90   # landscape orientation (320 wide x 240 tall)
+    lambda: |-
+      it.fill(Color(0, 0, 0));
+      it.print(20, 80,  id(font_large), Color(0, 255, 255), "Freenove Display");
+      it.print(20, 130, id(font_small), Color(0, 255, 0),   "ESPHome is running!");
