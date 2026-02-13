@@ -62,22 +62,18 @@ font:
   - file: "gfonts://Roboto"
     id: font_xl
     size: 56
+  - file: "gfonts://Roboto"
+    id: font_tiny
+    size: 11
 
-# ── Weather data pulled from Home Assistant ───────────────────────────────────
-# All values imported as text_sensor to avoid a linker bug where the homeassistant
-# numeric sensor platform doesn't pull in the base sensor component .cpp files.
-# Temperature/humidity arrive as strings and are parsed with atof() in the lambda.
+# ── Sensors from Home Assistant ───────────────────────────────────────────────
+# All imported as text_sensor; numeric values parsed with atof() in the lambda.
 text_sensor:
-  # Forces the text_sensor component to compile (fixes the linker issue)
   - platform: version
     name: "ESPHome Version"
     internal: true
 
-  - platform: homeassistant
-    id: weather_condition
-    entity_id: weather.home
-    internal: true
-
+  # ── Current conditions ───────────────────────────────────────────────────
   - platform: homeassistant
     id: weather_temp
     entity_id: sensor.kianevad37_temperature
@@ -88,6 +84,92 @@ text_sensor:
     entity_id: sensor.kianevad37_relative_humidity
     internal: true
 
+  - platform: homeassistant
+    id: weather_wind_speed
+    entity_id: sensor.kianevad37_wind_speed
+    internal: true
+
+  - platform: homeassistant
+    id: weather_wind_dir
+    entity_id: sensor.kianevad37_wind_direction_cardinal
+    internal: true
+
+  # ── 5-day forecast summaries (_0=Fri _1=Sat _2=Sun _3=Mon _4=Tue) ───────
+  - platform: homeassistant
+    id: summary_0
+    entity_id: sensor.kianevad37_weather_summary_0
+    internal: true
+
+  - platform: homeassistant
+    id: summary_1
+    entity_id: sensor.kianevad37_weather_summary_1
+    internal: true
+
+  - platform: homeassistant
+    id: summary_2
+    entity_id: sensor.kianevad37_weather_summary_2
+    internal: true
+
+  - platform: homeassistant
+    id: summary_3
+    entity_id: sensor.kianevad37_weather_summary_3
+    internal: true
+
+  - platform: homeassistant
+    id: summary_4
+    entity_id: sensor.kianevad37_weather_summary_4
+    internal: true
+
+  # ── Forecast high temps ──────────────────────────────────────────────────
+  # Fri high = current temperature (no separate "today high" entity)
+  # Sat high = "tomorrow"; Tue high uses day name; Sun/Mon — verify IDs in HA
+  - platform: homeassistant
+    id: hi_1
+    entity_id: sensor.kianevad37_forecast_temperature_tomorrow
+    internal: true
+
+  - platform: homeassistant
+    id: hi_2
+    entity_id: sensor.kianevad37_forecast_temperature_sunday
+    internal: true
+
+  - platform: homeassistant
+    id: hi_3
+    entity_id: sensor.kianevad37_forecast_temperature_monday
+    internal: true
+
+  - platform: homeassistant
+    id: hi_4
+    entity_id: sensor.kianevad37_forecast_temperature_tuesday
+    internal: true
+
+  # ── Forecast low temps (night) ───────────────────────────────────────────
+  # Fri low = tonight; Sat low = tomorrow night; Sun/Mon — verify IDs in HA
+  - platform: homeassistant
+    id: lo_0
+    entity_id: sensor.kianevad37_forecast_temperature_tonight
+    internal: true
+
+  - platform: homeassistant
+    id: lo_1
+    entity_id: sensor.kianevad37_forecast_temperature_tomorrow_night
+    internal: true
+
+  - platform: homeassistant
+    id: lo_2
+    entity_id: sensor.kianevad37_forecast_temperature_sunday_night
+    internal: true
+
+  - platform: homeassistant
+    id: lo_3
+    entity_id: sensor.kianevad37_forecast_temperature_monday_night
+    internal: true
+
+  - platform: homeassistant
+    id: lo_4
+    entity_id: sensor.kianevad37_forecast_temperature_tuesday_night
+    internal: true
+
 display:
   - platform: ili9xxx
     model: ILI9341
@@ -95,38 +177,132 @@ display:
     cs_pin: GPIO10
     dc_pin: GPIO9
     reset_pin: GPIO8
-    rotation: 90   # landscape orientation (320 wide x 240 tall)
+    rotation: 90   # landscape 320x240
     invert_colors: false
     lambda: |-
-      // Background
       it.fill(Color(0, 0, 0));
 
-      // ── Header bar ──────────────────────────────────────────────────────
-      it.filled_rectangle(0, 0, 320, 36, Color(0, 60, 120));
-      it.print(10, 6, id(font_large), Color(255, 255, 255), "Weather Station");
+      // ── Current conditions strip (y=0..44) ───────────────────────────────
+      it.filled_rectangle(0, 0, 320, 45, Color(0, 40, 80));
 
-      // ── Condition ───────────────────────────────────────────────────────
-      std::string cond = id(weather_condition).has_state()
-                         ? id(weather_condition).state : "---";
-      it.print(10, 48, id(font_small), Color(180, 200, 255), cond.c_str());
+      char buf[24];
 
-      // ── Temperature (large) — arrives as string, parsed to float ────────
+      // Temperature
       if (id(weather_temp).has_state()) {
-        float t = atof(id(weather_temp).state.c_str());
-        char buf[12];
-        snprintf(buf, sizeof(buf), "%.1f°", t);
-        it.print(30, 80, id(font_xl), Color(0, 220, 255), buf);
+        snprintf(buf, sizeof(buf), "%.1f°", atof(id(weather_temp).state.c_str()));
+        it.print(5, 14, id(font_small), Color(0, 220, 255), buf);
       } else {
-        it.print(30, 80, id(font_xl), Color(80, 80, 80), "--.-°");
+        it.print(5, 14, id(font_small), Color(80, 80, 80), "--.-°");
       }
 
-      // ── Humidity — arrives as string, parsed to float ────────────────────
+      // Humidity
       if (id(weather_humidity).has_state()) {
-        float h = atof(id(weather_humidity).state.c_str());
-        char buf[16];
-        snprintf(buf, sizeof(buf), "Humidity: %.0f%%", h);
-        it.print(10, 175, id(font_small), Color(0, 255, 150), buf);
+        snprintf(buf, sizeof(buf), "%.0f%% RH", atof(id(weather_humidity).state.c_str()));
+        it.print(100, 14, id(font_small), Color(0, 255, 150), buf);
+      } else {
+        it.print(100, 14, id(font_small), Color(80, 80, 80), "--% RH");
       }
 
-      // ── Divider ─────────────────────────────────────────────────────────
-      it.horizontal_line(0, 160, 320, Color(40, 40, 60));
+      // Wind speed + direction
+      {
+        std::string spd = id(weather_wind_speed).has_state() ? id(weather_wind_speed).state : "--";
+        std::string dir = id(weather_wind_dir).has_state()   ? id(weather_wind_dir).state   : "--";
+        snprintf(buf, sizeof(buf), "%.0fmph %s",
+                 atof(spd.c_str()), dir.c_str());
+        it.print(200, 14, id(font_small), Color(255, 200, 0), buf);
+      }
+
+      // ── Section divider ──────────────────────────────────────────────────
+      it.horizontal_line(0, 45, 320, Color(40, 40, 100));
+
+      // ── "5-DAY FORECAST" label ───────────────────────────────────────────
+      it.print(5, 49, id(font_tiny), Color(150, 150, 180), "5-DAY FORECAST");
+      it.horizontal_line(0, 62, 320, Color(40, 40, 100));
+
+      // ── Column separators (y=62..240) ────────────────────────────────────
+      for (int i = 1; i < 5; i++) {
+        it.vertical_line(i * 64, 62, 178, Color(30, 30, 60));
+      }
+
+      // ── Forecast columns (each 64px wide) ────────────────────────────────
+      // Layout per column:
+      //   y=67  day name (font_small)
+      //   y=92  summary word 1 (font_tiny)
+      //   y=105 summary word 2 (font_tiny)
+      //   y=155 H: high temp   (font_tiny, orange)
+      //   y=170 L: low temp    (font_tiny, blue)
+      //
+      // Column left edges: 0, 64, 128, 192, 256
+      // Day name x (centred 3-char label in 64px ≈ +18px): 18, 82, 146, 210, 274
+      // Summary / temp text x (+3px padding):               3, 67, 131, 195, 259
+
+      const char* day_labels[5] = {"FRI", "SAT", "SUN", "MON", "TUE"};
+      int day_x[5]  = {18,  82, 146, 210, 274};
+      int text_x[5] = { 3,  67, 131, 195, 259};
+
+      // Summary sensor pointers
+      esphome::text_sensor::TextSensor* summaries[5] = {
+        id(summary_0), id(summary_1), id(summary_2), id(summary_3), id(summary_4)
+      };
+
+      // High temp sensors (index 0 = Fri uses current temp, handled separately)
+      esphome::text_sensor::TextSensor* hi_sensors[5] = {
+        nullptr, id(hi_1), id(hi_2), id(hi_3), id(hi_4)
+      };
+
+      // Low temp sensors
+      esphome::text_sensor::TextSensor* lo_sensors[5] = {
+        id(lo_0), id(lo_1), id(lo_2), id(lo_3), id(lo_4)
+      };
+
+      for (int col = 0; col < 5; col++) {
+        int dx = day_x[col];
+        int tx = text_x[col];
+
+        // Day name
+        it.print(dx, 67, id(font_small), Color(255, 255, 255), day_labels[col]);
+
+        // Weather summary — split at spaces into two lines
+        if (summaries[col]->has_state()) {
+          std::string s = summaries[col]->state;
+          size_t sp1 = s.find(' ');
+          std::string w1 = (sp1 != std::string::npos) ? s.substr(0, sp1) : s;
+          std::string w2 = "";
+          if (sp1 != std::string::npos && sp1 + 1 < s.size()) {
+            w2 = s.substr(sp1 + 1);
+            size_t sp2 = w2.find(' ');
+            if (sp2 != std::string::npos) w2 = w2.substr(0, sp2);
+          }
+          it.print(tx, 92,  id(font_tiny), Color(180, 200, 255), w1.c_str());
+          if (!w2.empty()) {
+            it.print(tx, 105, id(font_tiny), Color(180, 200, 255), w2.c_str());
+          }
+        } else {
+          it.print(tx, 92, id(font_tiny), Color(80, 80, 80), "---");
+        }
+
+        // High temp (col 0 = Friday uses current live temperature)
+        if (col == 0) {
+          if (id(weather_temp).has_state()) {
+            snprintf(buf, sizeof(buf), "H:%.0f°", atof(id(weather_temp).state.c_str()));
+            it.print(tx, 155, id(font_tiny), Color(255, 120, 60), buf);
+          } else {
+            it.print(tx, 155, id(font_tiny), Color(80, 80, 80), "H:--");
+          }
+        } else {
+          if (hi_sensors[col] && hi_sensors[col]->has_state()) {
+            snprintf(buf, sizeof(buf), "H:%.0f°", atof(hi_sensors[col]->state.c_str()));
+            it.print(tx, 155, id(font_tiny), Color(255, 120, 60), buf);
+          } else {
+            it.print(tx, 155, id(font_tiny), Color(80, 80, 80), "H:--");
+          }
+        }
+
+        // Low temp
+        if (lo_sensors[col] && lo_sensors[col]->has_state()) {
+          snprintf(buf, sizeof(buf), "L:%.0f°", atof(lo_sensors[col]->state.c_str()));
+          it.print(tx, 170, id(font_tiny), Color(100, 180, 255), buf);
+        } else {
+          it.print(tx, 170, id(font_tiny), Color(80, 80, 80), "L:--");
+        }
+      }
