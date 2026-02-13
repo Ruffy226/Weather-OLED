@@ -59,6 +59,26 @@ font:
   - file: "gfonts://Roboto"
     id: font_small
     size: 16
+  - file: "gfonts://Roboto"
+    id: font_xl
+    size: 56
+
+# ── Weather data pulled from Home Assistant ───────────────────────────────────
+text_sensor:
+  - platform: homeassistant
+    id: weather_condition
+    entity_id: weather.home
+    internal: true
+
+sensor:
+  - platform: homeassistant
+    id: weather_temp
+    entity_id: sensor.outdoor_temperature   # change to your HA entity
+    internal: true
+  - platform: homeassistant
+    id: weather_humidity
+    entity_id: sensor.outdoor_humidity      # change to your HA entity
+    internal: true
 
 display:
   - platform: ili9xxx
@@ -70,6 +90,33 @@ display:
     rotation: 90   # landscape orientation (320 wide x 240 tall)
     invert_colors: false
     lambda: |-
+      // Background
       it.fill(Color(0, 0, 0));
-      it.print(20, 80,  id(font_large), Color(0, 255, 255), "Freenove Display");
-      it.print(20, 130, id(font_small), Color(0, 255, 0),   "ESPHome is running!");
+
+      // ── Header bar ──────────────────────────────────────────────────────
+      it.filled_rectangle(0, 0, 320, 36, Color(0, 60, 120));
+      it.print(10, 6, id(font_large), Color(255, 255, 255), "Weather Station");
+
+      // ── Condition ───────────────────────────────────────────────────────
+      std::string cond = id(weather_condition).has_state()
+                         ? id(weather_condition).state : "---";
+      it.print(10, 48, id(font_small), Color(180, 200, 255), cond.c_str());
+
+      // ── Temperature (large, centre) ──────────────────────────────────
+      if (id(weather_temp).has_state()) {
+        char buf[12];
+        snprintf(buf, sizeof(buf), "%.1f°", id(weather_temp).state);
+        it.print(30, 80, id(font_xl), Color(0, 220, 255), buf);
+      } else {
+        it.print(30, 80, id(font_xl), Color(80, 80, 80), "--.-°");
+      }
+
+      // ── Humidity ────────────────────────────────────────────────────────
+      if (id(weather_humidity).has_state()) {
+        char buf[16];
+        snprintf(buf, sizeof(buf), "Humidity: %.0f%%", id(weather_humidity).state);
+        it.print(10, 175, id(font_small), Color(0, 255, 150), buf);
+      }
+
+      // ── Divider ─────────────────────────────────────────────────────────
+      it.horizontal_line(0, 160, 320, Color(40, 40, 60));
