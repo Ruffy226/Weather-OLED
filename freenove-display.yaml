@@ -64,17 +64,25 @@ font:
     size: 56
 
 # ── Weather data pulled from Home Assistant ───────────────────────────────────
+# All values imported as text_sensor to avoid a linker bug where the homeassistant
+# numeric sensor platform doesn't pull in the base sensor component .cpp files.
+# Temperature/humidity arrive as strings and are parsed with atof() in the lambda.
 text_sensor:
+  # Forces the text_sensor component to compile (fixes the linker issue)
+  - platform: version
+    name: "ESPHome Version"
+    internal: true
+
   - platform: homeassistant
     id: weather_condition
     entity_id: weather.home
     internal: true
 
-sensor:
   - platform: homeassistant
     id: weather_temp
     entity_id: sensor.outdoor_temperature   # change to your HA entity
     internal: true
+
   - platform: homeassistant
     id: weather_humidity
     entity_id: sensor.outdoor_humidity      # change to your HA entity
@@ -102,19 +110,21 @@ display:
                          ? id(weather_condition).state : "---";
       it.print(10, 48, id(font_small), Color(180, 200, 255), cond.c_str());
 
-      // ── Temperature (large, centre) ──────────────────────────────────
+      // ── Temperature (large) — arrives as string, parsed to float ────────
       if (id(weather_temp).has_state()) {
+        float t = atof(id(weather_temp).state.c_str());
         char buf[12];
-        snprintf(buf, sizeof(buf), "%.1f°", id(weather_temp).state);
+        snprintf(buf, sizeof(buf), "%.1f°", t);
         it.print(30, 80, id(font_xl), Color(0, 220, 255), buf);
       } else {
         it.print(30, 80, id(font_xl), Color(80, 80, 80), "--.-°");
       }
 
-      // ── Humidity ────────────────────────────────────────────────────────
+      // ── Humidity — arrives as string, parsed to float ────────────────────
       if (id(weather_humidity).has_state()) {
+        float h = atof(id(weather_humidity).state.c_str());
         char buf[16];
-        snprintf(buf, sizeof(buf), "Humidity: %.0f%%", id(weather_humidity).state);
+        snprintf(buf, sizeof(buf), "Humidity: %.0f%%", h);
         it.print(10, 175, id(font_small), Color(0, 255, 150), buf);
       }
 
