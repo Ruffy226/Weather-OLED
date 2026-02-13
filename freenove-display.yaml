@@ -3,31 +3,25 @@ esphome:
   friendly_name: Freenove Display
   on_boot:
     then:
-      - output.turn_on: display_backlight
-
+      - output.set_level:
+          id: display_backlight
+          level: 100%
 esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: arduino
-
 logger:
-
 api:
-
 ota:
   - platform: esphome
     password: !secret ota_password
-
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-
   ap:
     ssid: "Freenove-Display-Fallback"
     password: !secret fallback_password
-
 captive_portal:
-
 # SPI bus shared by display (and touch if added later)
 # Wiring:
 #   Display VCC  -> 3.3V
@@ -39,19 +33,17 @@ captive_portal:
 #   Display DC   -> GPIO9
 #   Display RST  -> GPIO8
 #   Display LED  -> GPIO14  (backlight, driven HIGH at boot)
-
-# Backlight driven HIGH at boot
+# Backlight with PWM for brightness control
 output:
-  - platform: gpio
+  - platform: ledc
     pin: GPIO14
     id: display_backlight
-
+    frequency: 1000Hz
 spi:
   clk_pin: GPIO12
   mosi_pin: GPIO11
   miso_pin: GPIO13
   id: spi_bus
-
 font:
   - file: "gfonts://Roboto"
     id: font_large
@@ -89,109 +81,170 @@ font:
       - "\U000F059D"  # weather-windy
       - "\U000F067E"  # weather-lightning-rainy
       - "\U000F0F35"  # weather-snowy-rainy
-
 # ── Sensors from Home Assistant ───────────────────────────────────────────────
 # All imported as text_sensor; numeric values parsed with atof() in the lambda.
 text_sensor:
   - platform: version
     name: "ESPHome Version"
     internal: true
-
   # ── Current conditions ───────────────────────────────────────────────────
   - platform: homeassistant
     id: weather_temp
     entity_id: sensor.kianevad37_temperature
     internal: true
-
   - platform: homeassistant
     id: weather_humidity
     entity_id: sensor.kianevad37_relative_humidity
     internal: true
-
   - platform: homeassistant
     id: weather_wind_speed
     entity_id: sensor.kianevad37_wind_speed
     internal: true
-
   - platform: homeassistant
     id: weather_wind_dir
     entity_id: sensor.kianevad37_wind_direction_cardinal
     internal: true
-
+  # ── Bottom ribbon sensors ────────────────────────────────────────────────
+  - platform: homeassistant
+    id: sunrise_time
+    entity_id: sensor.sun_next_dawn
+    internal: true
+  - platform: homeassistant
+    id: sunset_time
+    entity_id: sensor.sun_next_dusk
+    internal: true
+  - platform: homeassistant
+    id: pressure
+    entity_id: sensor.kianevad37_pressure
+    internal: true
   # ── 5-day forecast summaries (_0=Fri _1=Sat _2=Sun _3=Mon _4=Tue) ───────
   - platform: homeassistant
     id: summary_0
     entity_id: sensor.kianevad37_weather_summary_0
     internal: true
-
   - platform: homeassistant
     id: summary_1
     entity_id: sensor.kianevad37_weather_summary_1
     internal: true
-
   - platform: homeassistant
     id: summary_2
     entity_id: sensor.kianevad37_weather_summary_2
     internal: true
-
   - platform: homeassistant
     id: summary_3
     entity_id: sensor.kianevad37_weather_summary_3
     internal: true
-
   - platform: homeassistant
     id: summary_4
     entity_id: sensor.kianevad37_weather_summary_4
     internal: true
-
   # ── Forecast high temps (_0d=Fri _2d=Sat _4d=Sun _6d=Mon _8d=Tue) ───────
   # Fri high = current temperature (no separate "today high" entity)
   - platform: homeassistant
     id: hi_1
     entity_id: sensor.kianevad37_forecast_temperature_2d
     internal: true
-
   - platform: homeassistant
     id: hi_2
     entity_id: sensor.kianevad37_forecast_temperature_4d
     internal: true
-
   - platform: homeassistant
     id: hi_3
     entity_id: sensor.kianevad37_forecast_temperature_6d
     internal: true
-
   - platform: homeassistant
     id: hi_4
     entity_id: sensor.kianevad37_forecast_temperature_8d
     internal: true
-
   # ── Forecast low temps / night (_1d=Fri night _3d=Sat _5d=Sun _7d=Mon _9d=Tue) ──
   - platform: homeassistant
     id: lo_0
     entity_id: sensor.kianevad37_forecast_temperature_1n
     internal: true
-
   - platform: homeassistant
     id: lo_1
     entity_id: sensor.kianevad37_forecast_temperature_3n
     internal: true
-
   - platform: homeassistant
     id: lo_2
     entity_id: sensor.kianevad37_forecast_temperature_5n
     internal: true
-
   - platform: homeassistant
     id: lo_3
     entity_id: sensor.kianevad37_forecast_temperature_7n
     internal: true
-
   - platform: homeassistant
     id: lo_4
     entity_id: sensor.kianevad37_forecast_temperature_9n
     internal: true
+  # ── Precipitation probability for each day ──────────────────────────────
+  - platform: homeassistant
+    id: precip_0
+    entity_id: sensor.kianevad37_precipitation_probability_0d
+    internal: true
+  - platform: homeassistant
+    id: precip_1
+    entity_id: sensor.kianevad37_precipitation_probability_2d
+    internal: true
+  - platform: homeassistant
+    id: precip_2
+    entity_id: sensor.kianevad37_precipitation_probability_4d
+    internal: true
+  - platform: homeassistant
+    id: precip_3
+    entity_id: sensor.kianevad37_precipitation_probability_6d
+    internal: true
+  - platform: homeassistant
+    id: precip_4
+    entity_id: sensor.kianevad37_precipitation_probability_8d
+    internal: true
+# Time component for scheduling
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    on_time:
+      # Check every minute if we should adjust brightness based on dawn/dusk
+      - seconds: 0
+        then:
+          - lambda: |-
+              // Get current time and dawn/dusk times
+              auto time = id(homeassistant_time).now();
+              if (!time.is_valid()) return;
 
+              // Parse dawn/dusk from sensors (ISO format)
+              std::string dawn_str = id(sunrise_time).state;
+              std::string dusk_str = id(sunset_time).state;
+
+              if (dawn_str.length() >= 19 && dusk_str.length() >= 19) {
+                // Extract hour and minute from ISO timestamp (UTC)
+                int dawn_hour = atoi(dawn_str.substr(11, 2).c_str());
+                int dawn_min = atoi(dawn_str.substr(14, 2).c_str());
+                int dusk_hour = atoi(dusk_str.substr(11, 2).c_str());
+                int dusk_min = atoi(dusk_str.substr(14, 2).c_str());
+
+                // Convert UTC to Central Time (UTC-6 for CST)
+                dawn_hour -= 6;
+                if (dawn_hour < 0) dawn_hour += 24;
+                dusk_hour -= 6;
+                if (dusk_hour < 0) dusk_hour += 24;
+
+                int current_mins = time.hour * 60 + time.minute;
+                int dawn_mins = dawn_hour * 60 + dawn_min;
+                int dusk_mins = dusk_hour * 60 + dusk_min;
+
+                // Dim to 50% between dusk and dawn, 100% between dawn and dusk
+                if (current_mins >= dusk_mins || current_mins < dawn_mins) {
+                  id(display_backlight).set_level(0.50);
+                } else {
+                  id(display_backlight).set_level(1.0);
+                }
+              }
+# Track last pressure reading for trend calculation
+globals:
+  - id: pressure_last
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
 display:
   - platform: ili9xxx
     model: ILI9341
@@ -207,7 +260,7 @@ display:
       // ── Current conditions strip (y=0..51) ───────────────────────────────
       it.filled_rectangle(0, 0, 320, 52, Color(0, 40, 80));
 
-      char buf[24];
+      char buf[32];
 
       // Temperature
       if (id(weather_temp).has_state()) {
@@ -222,7 +275,7 @@ display:
         snprintf(buf, sizeof(buf), "%.0f%% RH", atof(id(weather_humidity).state.c_str()));
         it.print(105, 16, id(font_medium), Color(0, 255, 150), buf);
       } else {
-        it.print(105, 16, id(font_medium), Color(80, 80, 80), "--% RH");
+        it.print(75, 16, id(font_medium), Color(80, 80, 80), "--% RH");
       }
 
       // Wind speed + direction
@@ -241,18 +294,19 @@ display:
       it.print(5, 55, id(font_tiny), Color(150, 150, 180), "5-DAY FORECAST");
       it.horizontal_line(0, 67, 320, Color(40, 40, 100));
 
-      // ── Column separators (y=67..240) ────────────────────────────────────
+      // ── Column separators (y=67..195) ────────────────────────────────────
       for (int i = 1; i < 5; i++) {
-        it.vertical_line(i * 64, 67, 173, Color(30, 30, 60));
+        it.vertical_line(i * 64, 67, 128, Color(30, 30, 60));
       }
 
       // ── Forecast columns (each 64px wide, centered) ──────────────────────
       // All text uses TextAlign::TOP_CENTER; x = column centre.
-      // Layout per column (y=68..240, 172px):
+      // Layout per column (y=68..185):
       //   y=71  day name    (font_small,    TOP_CENTER)
       //   y=91  MDI icon    (font_icons,    TOP_CENTER)
       //   y=133 H: high     (font_tiny_mid, TOP_CENTER, orange)
       //   y=155 L: low      (font_tiny_mid, TOP_CENTER, blue)
+      //   y=172 precip %    (font_tiny,     TOP_CENTER, cyan)
       //
       // Column centres: 32, 96, 160, 224, 288
 
@@ -296,6 +350,9 @@ display:
       esphome::text_sensor::TextSensor* lo_sensors[5] = {
         id(lo_0), id(lo_1), id(lo_2), id(lo_3), id(lo_4)
       };
+      esphome::text_sensor::TextSensor* precip_sensors[5] = {
+        id(precip_0), id(precip_1), id(precip_2), id(precip_3), id(precip_4)
+      };
 
       for (int col = 0; col < 5; col++) {
         int x = cx[col];
@@ -338,4 +395,93 @@ display:
           it.print(x, 155, id(font_tiny_mid), Color(80, 80, 80),
                    TextAlign::TOP_CENTER, "L:--");
         }
+
+        // Precipitation probability — centred
+        if (precip_sensors[col] && precip_sensors[col]->has_state()) {
+          snprintf(buf, sizeof(buf), "%.0f%%",
+                   atof(precip_sensors[col]->state.c_str()));
+          it.print(x, 172, id(font_tiny), Color(100, 200, 255),
+                   TextAlign::TOP_CENTER, buf);
+        } else {
+          it.print(x, 172, id(font_tiny), Color(80, 80, 80),
+                   TextAlign::TOP_CENTER, "--%");
+        }
+      }
+
+      // ── Bottom ribbon divider ────────────────────────────────────────────
+      it.horizontal_line(0, 195, 320, Color(40, 40, 100));
+
+      // ── Bottom ribbon (y=196..240, 44px height) ──────────────────────────
+      it.filled_rectangle(0, 196, 320, 44, Color(20, 20, 40));
+
+      // Parse sunrise/sunset times and convert from UTC to local time
+      auto parse_time = [](const std::string& iso) -> std::string {
+        if (iso.length() < 16) return "--:--";
+        // Extract HH:MM from UTC timestamp
+        int hour = atoi(iso.substr(11, 2).c_str());
+        int min = atoi(iso.substr(14, 2).c_str());
+
+        // Convert from UTC to Central Time (UTC-6 CST / UTC-5 CDT)
+        // TODO: This assumes CST (UTC-6). Adjust if you need DST handling.
+        hour -= 6;  // CST offset
+        if (hour < 0) hour += 24;
+
+        // Convert to 12-hour format
+        bool pm = hour >= 12;
+        if (hour > 12) hour -= 12;
+        if (hour == 0) hour = 12;
+
+        char result[8];
+        snprintf(result, sizeof(result), "%d:%02d%s", hour, min, pm ? "p" : "a");
+        return std::string(result);
+      };
+
+      // Left section: Sunrise/Sunset (x=5..105)
+      if (id(sunrise_time).has_state() && id(sunset_time).has_state()) {
+        std::string rise = parse_time(id(sunrise_time).state);
+        std::string set = parse_time(id(sunset_time).state);
+        snprintf(buf, sizeof(buf), "%s   %s", rise.c_str(), set.c_str());
+        it.print(5, 205, id(font_tiny_mid), Color(255, 200, 100), buf);
+      } else {
+        it.print(5, 205, id(font_tiny_mid), Color(80, 80, 80), "--:--   --:--");
+      }
+
+      // Center section: Pressure (x=110..210)
+      if (id(pressure).has_state()) {
+        snprintf(buf, sizeof(buf), "%.2f inHg", atof(id(pressure).state.c_str()));
+        it.print(110, 205, id(font_tiny_mid), Color(150, 255, 150),
+                 TextAlign::TOP_LEFT, buf);
+      } else {
+        it.print(110, 205, id(font_tiny_mid), Color(80, 80, 80),
+                 TextAlign::TOP_LEFT, "--.- inHg");
+      }
+
+      // Right section: Pressure trend (x=230..315)
+      {
+        float current = 0.0;
+        if (id(pressure).has_state()) {
+          current = atof(id(pressure).state.c_str());
+        }
+        float last = id(pressure_last);
+        const char* trend_text = "Steady";
+        Color trend_color = Color(200, 200, 200);
+
+        if (current > 0.0 && last > 0.0) {
+          float change = current - last;
+          if (change > 0.03) {
+            trend_text = "Rising";
+            trend_color = Color(100, 255, 100);
+          } else if (change < -0.03) {
+            trend_text = "Falling";
+            trend_color = Color(255, 100, 100);
+          }
+        }
+
+        // Update for next refresh
+        if (current > 0.0) {
+          id(pressure_last) = current;
+        }
+
+        it.print(230, 205, id(font_tiny_mid), trend_color,
+                 TextAlign::TOP_LEFT, trend_text);
       }
