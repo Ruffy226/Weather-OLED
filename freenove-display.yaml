@@ -80,12 +80,12 @@ text_sensor:
 
   - platform: homeassistant
     id: weather_temp
-    entity_id: sensor.outdoor_temperature   # change to your HA entity
+    entity_id: sensor.kianevad37_temperature
     internal: true
 
   - platform: homeassistant
     id: weather_humidity
-    entity_id: sensor.outdoor_humidity      # change to your HA entity
+    entity_id: sensor.kianevad37_relative_humidity
     internal: true
 
 display:
