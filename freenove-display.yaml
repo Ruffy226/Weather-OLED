@@ -68,6 +68,9 @@ font:
   - file: "gfonts://Roboto"
     id: font_tiny_mid
     size: 14
+  - file: "gfonts://Roboto"
+    id: font_medium
+    size: 20
   # MDI weather icons — only the glyphs we actually use are compiled in
   - file: "materialdesignicons-webfont.ttf"
     id: font_icons
@@ -166,27 +169,27 @@ text_sensor:
   # ── Forecast low temps / night (_1d=Fri night _3d=Sat _5d=Sun _7d=Mon _9d=Tue) ──
   - platform: homeassistant
     id: lo_0
-    entity_id: sensor.kianevad37_forecast_temperature_1d
+    entity_id: sensor.kianevad37_forecast_temperature_1n
     internal: true
 
   - platform: homeassistant
     id: lo_1
-    entity_id: sensor.kianevad37_forecast_temperature_3d
+    entity_id: sensor.kianevad37_forecast_temperature_3n
     internal: true
 
   - platform: homeassistant
     id: lo_2
-    entity_id: sensor.kianevad37_forecast_temperature_5d
+    entity_id: sensor.kianevad37_forecast_temperature_5n
     internal: true
 
   - platform: homeassistant
     id: lo_3
-    entity_id: sensor.kianevad37_forecast_temperature_7d
+    entity_id: sensor.kianevad37_forecast_temperature_7n
     internal: true
 
   - platform: homeassistant
     id: lo_4
-    entity_id: sensor.kianevad37_forecast_temperature_9d
+    entity_id: sensor.kianevad37_forecast_temperature_9n
     internal: true
 
 display:
@@ -201,25 +204,25 @@ display:
     lambda: |-
       it.fill(Color(0, 0, 0));
 
-      // ── Current conditions strip (y=0..44) ───────────────────────────────
-      it.filled_rectangle(0, 0, 320, 45, Color(0, 40, 80));
+      // ── Current conditions strip (y=0..51) ───────────────────────────────
+      it.filled_rectangle(0, 0, 320, 52, Color(0, 40, 80));
 
       char buf[24];
 
       // Temperature
       if (id(weather_temp).has_state()) {
         snprintf(buf, sizeof(buf), "%.1f°", atof(id(weather_temp).state.c_str()));
-        it.print(5, 14, id(font_small), Color(0, 220, 255), buf);
+        it.print(5, 16, id(font_medium), Color(0, 220, 255), buf);
       } else {
-        it.print(5, 14, id(font_small), Color(80, 80, 80), "--.-°");
+        it.print(5, 16, id(font_medium), Color(80, 80, 80), "--.-°");
       }
 
       // Humidity
       if (id(weather_humidity).has_state()) {
         snprintf(buf, sizeof(buf), "%.0f%% RH", atof(id(weather_humidity).state.c_str()));
-        it.print(100, 14, id(font_small), Color(0, 255, 150), buf);
+        it.print(105, 16, id(font_medium), Color(0, 255, 150), buf);
       } else {
-        it.print(100, 14, id(font_small), Color(80, 80, 80), "--% RH");
+        it.print(105, 16, id(font_medium), Color(80, 80, 80), "--% RH");
       }
 
       // Wind speed + direction
@@ -228,28 +231,28 @@ display:
         std::string dir = id(weather_wind_dir).has_state()   ? id(weather_wind_dir).state   : "--";
         snprintf(buf, sizeof(buf), "%.0fmph %s",
                  atof(spd.c_str()), dir.c_str());
-        it.print(200, 14, id(font_small), Color(255, 200, 0), buf);
+        it.print(210, 16, id(font_medium), Color(255, 200, 0), buf);
       }
 
       // ── Section divider ──────────────────────────────────────────────────
-      it.horizontal_line(0, 45, 320, Color(40, 40, 100));
+      it.horizontal_line(0, 52, 320, Color(40, 40, 100));
 
       // ── "5-DAY FORECAST" label ───────────────────────────────────────────
-      it.print(5, 49, id(font_tiny), Color(150, 150, 180), "5-DAY FORECAST");
-      it.horizontal_line(0, 62, 320, Color(40, 40, 100));
+      it.print(5, 55, id(font_tiny), Color(150, 150, 180), "5-DAY FORECAST");
+      it.horizontal_line(0, 67, 320, Color(40, 40, 100));
 
-      // ── Column separators (y=62..240) ────────────────────────────────────
+      // ── Column separators (y=67..240) ────────────────────────────────────
       for (int i = 1; i < 5; i++) {
-        it.vertical_line(i * 64, 62, 178, Color(30, 30, 60));
+        it.vertical_line(i * 64, 67, 173, Color(30, 30, 60));
       }
 
       // ── Forecast columns (each 64px wide, centered) ──────────────────────
       // All text uses TextAlign::TOP_CENTER; x = column centre.
-      // Layout per column (y=63..240, 177px):
-      //   y=67  day name    (font_small,    TOP_CENTER)
-      //   y=87  MDI icon    (font_icons,    TOP_CENTER)
-      //   y=130 H: high     (font_tiny_mid, TOP_CENTER, orange)
-      //   y=148 L: low      (font_tiny_mid, TOP_CENTER, blue)
+      // Layout per column (y=68..240, 172px):
+      //   y=71  day name    (font_small,    TOP_CENTER)
+      //   y=91  MDI icon    (font_icons,    TOP_CENTER)
+      //   y=133 H: high     (font_tiny_mid, TOP_CENTER, orange)
+      //   y=155 L: low      (font_tiny_mid, TOP_CENTER, blue)
       //
       // Column centres: 32, 96, 160, 224, 288
 
@@ -298,12 +301,12 @@ display:
         int x = cx[col];
 
         // Day name — centred
-        it.print(x, 67, id(font_small), Color(255, 255, 255),
+        it.print(x, 71, id(font_small), Color(255, 255, 255),
                  TextAlign::TOP_CENTER, day_labels[col]);
 
         // Weather icon — centred
         if (summaries[col]->has_state()) {
-          it.print(x, 87, id(font_icons), Color(180, 200, 255),
+          it.print(x, 91, id(font_icons), Color(180, 200, 255),
                    TextAlign::TOP_CENTER, weather_icon(summaries[col]->state));
         }
 
@@ -317,10 +320,10 @@ display:
               ? atof(id(weather_temp).state.c_str())
               : atof(hi_sensors[col]->state.c_str());
             snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0", val);
-            it.print(x, 130, id(font_tiny_mid), Color(255, 120, 60),
+            it.print(x, 133, id(font_tiny_mid), Color(255, 120, 60),
                      TextAlign::TOP_CENTER, buf);
           } else {
-            it.print(x, 130, id(font_tiny_mid), Color(80, 80, 80),
+            it.print(x, 133, id(font_tiny_mid), Color(80, 80, 80),
                      TextAlign::TOP_CENTER, "H:--");
           }
         }
@@ -329,10 +332,10 @@ display:
         if (lo_sensors[col] && lo_sensors[col]->has_state()) {
           snprintf(buf, sizeof(buf), "L:%.0f\xc2\xb0",
                    atof(lo_sensors[col]->state.c_str()));
-          it.print(x, 148, id(font_tiny_mid), Color(100, 180, 255),
+          it.print(x, 155, id(font_tiny_mid), Color(100, 180, 255),
                    TextAlign::TOP_CENTER, buf);
         } else {
-          it.print(x, 148, id(font_tiny_mid), Color(80, 80, 80),
+          it.print(x, 155, id(font_tiny_mid), Color(80, 80, 80),
                    TextAlign::TOP_CENTER, "L:--");
         }
       }
