@@ -120,54 +120,52 @@ text_sensor:
     entity_id: sensor.kianevad37_weather_summary_4
     internal: true
 
-  # ── Forecast high temps ──────────────────────────────────────────────────
+  # ── Forecast high temps (_0d=Fri _2d=Sat _4d=Sun _6d=Mon _8d=Tue) ───────
   # Fri high = current temperature (no separate "today high" entity)
-  # Sat high = "tomorrow"; Tue high uses day name; Sun/Mon — verify IDs in HA
   - platform: homeassistant
     id: hi_1
-    entity_id: sensor.kianevad37_forecast_temperature_tomorrow
+    entity_id: sensor.kianevad37_forecast_temperature_2d
     internal: true
 
   - platform: homeassistant
     id: hi_2
-    entity_id: sensor.kianevad37_forecast_temperature_sunday
+    entity_id: sensor.kianevad37_forecast_temperature_4d
     internal: true
 
   - platform: homeassistant
     id: hi_3
-    entity_id: sensor.kianevad37_forecast_temperature_monday
+    entity_id: sensor.kianevad37_forecast_temperature_6d
     internal: true
 
   - platform: homeassistant
     id: hi_4
-    entity_id: sensor.kianevad37_forecast_temperature_tuesday
+    entity_id: sensor.kianevad37_forecast_temperature_8d
     internal: true
 
-  # ── Forecast low temps (night) ───────────────────────────────────────────
-  # Fri low = tonight; Sat low = tomorrow night; Sun/Mon — verify IDs in HA
+  # ── Forecast low temps / night (_1d=Fri night _3d=Sat _5d=Sun _7d=Mon _9d=Tue) ──
   - platform: homeassistant
     id: lo_0
-    entity_id: sensor.kianevad37_forecast_temperature_tonight
+    entity_id: sensor.kianevad37_forecast_temperature_1d
     internal: true
 
   - platform: homeassistant
     id: lo_1
-    entity_id: sensor.kianevad37_forecast_temperature_tomorrow_night
+    entity_id: sensor.kianevad37_forecast_temperature_3d
     internal: true
 
   - platform: homeassistant
     id: lo_2
-    entity_id: sensor.kianevad37_forecast_temperature_sunday_night
+    entity_id: sensor.kianevad37_forecast_temperature_5d
     internal: true
 
   - platform: homeassistant
     id: lo_3
-    entity_id: sensor.kianevad37_forecast_temperature_monday_night
+    entity_id: sensor.kianevad37_forecast_temperature_7d
     internal: true
 
   - platform: homeassistant
     id: lo_4
-    entity_id: sensor.kianevad37_forecast_temperature_tuesday_night
+    entity_id: sensor.kianevad37_forecast_temperature_9d
     internal: true
 
 display:
