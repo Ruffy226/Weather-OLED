@@ -68,6 +68,24 @@ font:
   - file: "gfonts://Roboto"
     id: font_tiny_mid
     size: 14
+  # MDI weather icons — only the glyphs we actually use are compiled in
+  - file: "materialdesignicons-webfont.ttf"
+    id: font_icons
+    size: 28
+    glyphs:
+      - "\U000F0599"  # weather-sunny
+      - "\U000F0598"  # weather-snowy
+      - "\U000F0597"  # weather-pouring
+      - "\U000F0596"  # weather-rainy
+      - "\U000F0595"  # weather-partly-cloudy
+      - "\U000F0594"  # weather-night
+      - "\U000F0593"  # weather-lightning
+      - "\U000F0592"  # weather-hail
+      - "\U000F0591"  # weather-fog
+      - "\U000F0590"  # weather-cloudy
+      - "\U000F059D"  # weather-windy
+      - "\U000F067E"  # weather-lightning-rainy
+      - "\U000F0F35"  # weather-snowy-rainy
 
 # ── Sensors from Home Assistant ───────────────────────────────────────────────
 # All imported as text_sensor; numeric values parsed with atof() in the lambda.
@@ -225,85 +243,96 @@ display:
         it.vertical_line(i * 64, 62, 178, Color(30, 30, 60));
       }
 
-      // ── Forecast columns (each 64px wide) ────────────────────────────────
-      // Layout per column:
-      //   y=67  day name (font_small)
-      //   y=92  summary word 1 (font_tiny)
-      //   y=105 summary word 2 (font_tiny)
-      //   y=152 H: high temp   (font_tiny_mid, orange)
-      //   y=170 L: low temp    (font_tiny_mid, blue)
+      // ── Forecast columns (each 64px wide, centered) ──────────────────────
+      // All text uses TextAlign::TOP_CENTER; x = column centre.
+      // Layout per column (y=63..240, 177px):
+      //   y=67  day name    (font_small,    TOP_CENTER)
+      //   y=87  MDI icon    (font_icons,    TOP_CENTER)
+      //   y=130 H: high     (font_tiny_mid, TOP_CENTER, orange)
+      //   y=148 L: low      (font_tiny_mid, TOP_CENTER, blue)
       //
-      // Column left edges: 0, 64, 128, 192, 256
-      // Day name x (centred 3-char label in 64px ≈ +18px): 18, 82, 146, 210, 274
-      // Summary / temp text x (+3px padding):               3, 67, 131, 195, 259
+      // Column centres: 32, 96, 160, 224, 288
+
+      // Map Wunderground summary text → MDI weather icon glyph
+      auto weather_icon = [](const std::string& s) -> const char* {
+        if (s.find("Thunder") != std::string::npos ||
+            s.find("Lightning") != std::string::npos)   return "\U000F067E"; // lightning-rainy
+        if (s.find("Hail") != std::string::npos)        return "\U000F0592"; // hail
+        if (s.find("Blizzard") != std::string::npos ||
+            s.find("Snow") != std::string::npos ||
+            s.find("Sleet") != std::string::npos)       return "\U000F0598"; // snowy
+        if (s.find("Drizzle") != std::string::npos ||
+            s.find("Shower") != std::string::npos ||
+            s.find("Rain") != std::string::npos)        return "\U000F0596"; // rainy
+        if (s.find("Fog") != std::string::npos ||
+            s.find("Mist") != std::string::npos ||
+            s.find("Haze") != std::string::npos ||
+            s.find("Smoke") != std::string::npos)       return "\U000F0591"; // fog
+        if (s.find("Wind") != std::string::npos ||
+            s.find("Breezy") != std::string::npos)      return "\U000F059D"; // windy
+        if (s.find("Overcast") != std::string::npos ||
+            s.find("Cloudy") != std::string::npos)      return "\U000F0590"; // cloudy
+        if (s.find("Partly") != std::string::npos ||
+            s.find("Mostly") != std::string::npos ||
+            s.find("Scattered") != std::string::npos)   return "\U000F0595"; // partly-cloudy
+        if (s.find("Clear") != std::string::npos ||
+            s.find("Sunny") != std::string::npos ||
+            s.find("Fair") != std::string::npos)        return "\U000F0599"; // sunny
+        return "\U000F0590"; // default: cloudy
+      };
 
       const char* day_labels[5] = {"FRI", "SAT", "SUN", "MON", "TUE"};
-      int day_x[5]  = {18,  82, 146, 210, 274};
-      int text_x[5] = { 3,  67, 131, 195, 259};
+      int cx[5] = {32, 96, 160, 224, 288};  // column centres
 
-      // Summary sensor pointers
       esphome::text_sensor::TextSensor* summaries[5] = {
         id(summary_0), id(summary_1), id(summary_2), id(summary_3), id(summary_4)
       };
-
-      // High temp sensors (index 0 = Fri uses current temp, handled separately)
       esphome::text_sensor::TextSensor* hi_sensors[5] = {
         nullptr, id(hi_1), id(hi_2), id(hi_3), id(hi_4)
       };
-
-      // Low temp sensors
       esphome::text_sensor::TextSensor* lo_sensors[5] = {
         id(lo_0), id(lo_1), id(lo_2), id(lo_3), id(lo_4)
       };
 
       for (int col = 0; col < 5; col++) {
-        int dx = day_x[col];
-        int tx = text_x[col];
+        int x = cx[col];
 
-        // Day name
-        it.print(dx, 67, id(font_small), Color(255, 255, 255), day_labels[col]);
+        // Day name — centred
+        it.print(x, 67, id(font_small), Color(255, 255, 255),
+                 TextAlign::TOP_CENTER, day_labels[col]);
 
-        // Weather summary — split at spaces into two lines
+        // Weather icon — centred
         if (summaries[col]->has_state()) {
-          std::string s = summaries[col]->state;
-          size_t sp1 = s.find(' ');
-          std::string w1 = (sp1 != std::string::npos) ? s.substr(0, sp1) : s;
-          std::string w2 = "";
-          if (sp1 != std::string::npos && sp1 + 1 < s.size()) {
-            w2 = s.substr(sp1 + 1);
-            size_t sp2 = w2.find(' ');
-            if (sp2 != std::string::npos) w2 = w2.substr(0, sp2);
-          }
-          it.print(tx, 92,  id(font_tiny), Color(180, 200, 255), w1.c_str());
-          if (!w2.empty()) {
-            it.print(tx, 105, id(font_tiny), Color(180, 200, 255), w2.c_str());
-          }
-        } else {
-          it.print(tx, 92, id(font_tiny), Color(80, 80, 80), "---");
+          it.print(x, 87, id(font_icons), Color(180, 200, 255),
+                   TextAlign::TOP_CENTER, weather_icon(summaries[col]->state));
         }
 
-        // High temp (col 0 = Friday uses current live temperature)
-        if (col == 0) {
-          if (id(weather_temp).has_state()) {
-            snprintf(buf, sizeof(buf), "H:%.0f°", atof(id(weather_temp).state.c_str()));
-            it.print(tx, 152, id(font_tiny_mid), Color(255, 120, 60), buf);
+        // High temp — centred (col 0 uses live current temp)
+        {
+          bool have_hi = (col == 0)
+            ? id(weather_temp).has_state()
+            : (hi_sensors[col] && hi_sensors[col]->has_state());
+          if (have_hi) {
+            float val = (col == 0)
+              ? atof(id(weather_temp).state.c_str())
+              : atof(hi_sensors[col]->state.c_str());
+            snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0", val);
+            it.print(x, 130, id(font_tiny_mid), Color(255, 120, 60),
+                     TextAlign::TOP_CENTER, buf);
           } else {
-            it.print(tx, 152, id(font_tiny_mid), Color(80, 80, 80), "H:--");
-          }
-        } else {
-          if (hi_sensors[col] && hi_sensors[col]->has_state()) {
-            snprintf(buf, sizeof(buf), "H:%.0f°", atof(hi_sensors[col]->state.c_str()));
-            it.print(tx, 152, id(font_tiny_mid), Color(255, 120, 60), buf);
-          } else {
-            it.print(tx, 152, id(font_tiny_mid), Color(80, 80, 80), "H:--");
+            it.print(x, 130, id(font_tiny_mid), Color(80, 80, 80),
+                     TextAlign::TOP_CENTER, "H:--");
           }
         }
 
-        // Low temp
+        // Low temp — centred
         if (lo_sensors[col] && lo_sensors[col]->has_state()) {
-          snprintf(buf, sizeof(buf), "L:%.0f°", atof(lo_sensors[col]->state.c_str()));
-          it.print(tx, 170, id(font_tiny_mid), Color(100, 180, 255), buf);
+          snprintf(buf, sizeof(buf), "L:%.0f\xc2\xb0",
+                   atof(lo_sensors[col]->state.c_str()));
+          it.print(x, 148, id(font_tiny_mid), Color(100, 180, 255),
+                   TextAlign::TOP_CENTER, buf);
         } else {
-          it.print(tx, 170, id(font_tiny_mid), Color(80, 80, 80), "L:--");
+          it.print(x, 148, id(font_tiny_mid), Color(80, 80, 80),
+                   TextAlign::TOP_CENTER, "L:--");
         }
       }
