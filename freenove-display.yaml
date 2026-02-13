@@ -13,8 +13,6 @@ esp32:
 logger:
 
 api:
-  encryption:
-    key: !secret freenove_display_api_key
 
 ota:
   - platform: esphome
