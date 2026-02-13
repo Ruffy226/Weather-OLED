@@ -231,7 +231,7 @@ display:
         std::string dir = id(weather_wind_dir).has_state()   ? id(weather_wind_dir).state   : "--";
         snprintf(buf, sizeof(buf), "%.0fmph %s",
                  atof(spd.c_str()), dir.c_str());
-        it.print(210, 16, id(font_medium), Color(255, 200, 0), buf);
+        it.print(190, 16, id(font_medium), Color(255, 200, 0), buf);
       }
 
       // ── Section divider ──────────────────────────────────────────────────
