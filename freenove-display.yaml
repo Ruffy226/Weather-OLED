@@ -65,6 +65,9 @@ font:
   - file: "gfonts://Roboto"
     id: font_tiny
     size: 11
+  - file: "gfonts://Roboto"
+    id: font_tiny_mid
+    size: 14
 
 # ── Sensors from Home Assistant ───────────────────────────────────────────────
 # All imported as text_sensor; numeric values parsed with atof() in the lambda.
@@ -227,8 +230,8 @@ display:
       //   y=67  day name (font_small)
       //   y=92  summary word 1 (font_tiny)
       //   y=105 summary word 2 (font_tiny)
-      //   y=155 H: high temp   (font_tiny, orange)
-      //   y=170 L: low temp    (font_tiny, blue)
+      //   y=152 H: high temp   (font_tiny_mid, orange)
+      //   y=170 L: low temp    (font_tiny_mid, blue)
       //
       // Column left edges: 0, 64, 128, 192, 256
       // Day name x (centred 3-char label in 64px ≈ +18px): 18, 82, 146, 210, 274
@@ -283,24 +286,24 @@ display:
         if (col == 0) {
           if (id(weather_temp).has_state()) {
             snprintf(buf, sizeof(buf), "H:%.0f°", atof(id(weather_temp).state.c_str()));
-            it.print(tx, 155, id(font_tiny), Color(255, 120, 60), buf);
+            it.print(tx, 152, id(font_tiny_mid), Color(255, 120, 60), buf);
           } else {
-            it.print(tx, 155, id(font_tiny), Color(80, 80, 80), "H:--");
+            it.print(tx, 152, id(font_tiny_mid), Color(80, 80, 80), "H:--");
           }
         } else {
           if (hi_sensors[col] && hi_sensors[col]->has_state()) {
             snprintf(buf, sizeof(buf), "H:%.0f°", atof(hi_sensors[col]->state.c_str()));
-            it.print(tx, 155, id(font_tiny), Color(255, 120, 60), buf);
+            it.print(tx, 152, id(font_tiny_mid), Color(255, 120, 60), buf);
           } else {
-            it.print(tx, 155, id(font_tiny), Color(80, 80, 80), "H:--");
+            it.print(tx, 152, id(font_tiny_mid), Color(80, 80, 80), "H:--");
           }
         }
 
         // Low temp
         if (lo_sensors[col] && lo_sensors[col]->has_state()) {
           snprintf(buf, sizeof(buf), "L:%.0f°", atof(lo_sensors[col]->state.c_str()));
-          it.print(tx, 170, id(font_tiny), Color(100, 180, 255), buf);
+          it.print(tx, 170, id(font_tiny_mid), Color(100, 180, 255), buf);
         } else {
-          it.print(tx, 170, id(font_tiny), Color(80, 80, 80), "L:--");
+          it.print(tx, 170, id(font_tiny_mid), Color(80, 80, 80), "L:--");
         }
       }
