@@ -68,6 +68,7 @@ display:
     dc_pin: GPIO9
     reset_pin: GPIO8
     rotation: 90   # landscape orientation (320 wide x 240 tall)
+    invert_colors: false
     lambda: |-
       it.fill(Color(0, 0, 0));
       it.print(20, 80,  id(font_large), Color(0, 255, 255), "Freenove Display");
