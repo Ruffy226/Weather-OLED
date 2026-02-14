@@ -6,7 +6,7 @@ ESPHome YAML configurations for ESP32-based weather displays driven by Home Assi
 
 | File | Hardware | Display | Resolution |
 |------|----------|---------|------------|
-| `weather-eink.yaml` | ESP32 DevKit | Waveshare 7.5" V2 e-paper | 800×480 |
+| `weather-eink.yaml` | ESP32 DevKit | Waveshare 4.2" e-paper | 400×300 |
 | `freenove-display.yaml` | ESP32-S3 DevKitC-1 | ILI9341 TFT (Freenove) | 320×240 |
 | `weather-oled.yaml` | Seeed XIAO ESP32-C6 | ILI9341 TFT | 320×240 |
 
@@ -14,7 +14,7 @@ ESPHome YAML configurations for ESP32-based weather displays driven by Home Assi
 
 ## weather-eink.yaml
 
-E-ink (e-paper) weather display on a **Waveshare 7.5" V2** (800×480, black/white).
+E-ink (e-paper) weather display on a **Waveshare 4.2"** (400×300, black/white).
 
 ### Features
 

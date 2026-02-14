@@ -27,7 +27,7 @@ wifi:
 
 captive_portal:
 
-# SPI bus for Waveshare 7.5" V2 e-paper display (800x480)
+# SPI bus for Waveshare 4.2" e-paper display (400x300)
 # Wiring:
 #   Display VCC  -> 3.3V
 #   Display GND  -> GND
@@ -44,43 +44,23 @@ spi:
 
 font:
   - file: "gfonts://Roboto"
-    id: font_large
-    size: 28
+    id: font_xl       # current temperature
+    size: 36
   - file: "gfonts://Roboto"
-    id: font_small
+    id: font_medium   # header summary / bottom ribbon
+    size: 22
+  - file: "gfonts://Roboto"
+    id: font_small    # day labels, H/L temps
     size: 16
   - file: "gfonts://Roboto"
-    id: font_xl
-    size: 64
-  - file: "gfonts://Roboto"
-    id: font_tiny
-    size: 11
-  - file: "gfonts://Roboto"
-    id: font_tiny_mid
+    id: font_tiny_mid # humidity, wind, precip %, section text
     size: 14
   - file: "gfonts://Roboto"
-    id: font_medium
-    size: 22
+    id: font_tiny     # section labels, updated timestamp
+    size: 11
   # MDI weather icons — only the glyphs we actually use are compiled in
   - file: "materialdesignicons-webfont.ttf"
-    id: font_icons
-    size: 48
-    glyphs:
-      - "\U000F0599"  # weather-sunny
-      - "\U000F0598"  # weather-snowy
-      - "\U000F0597"  # weather-pouring
-      - "\U000F0596"  # weather-rainy
-      - "\U000F0595"  # weather-partly-cloudy
-      - "\U000F0594"  # weather-night
-      - "\U000F0593"  # weather-lightning
-      - "\U000F0592"  # weather-hail
-      - "\U000F0591"  # weather-fog
-      - "\U000F0590"  # weather-cloudy
-      - "\U000F059D"  # weather-windy
-      - "\U000F067E"  # weather-lightning-rainy
-      - "\U000F0F35"  # weather-snowy-rainy
-  - file: "materialdesignicons-webfont.ttf"
-    id: font_icons_sm
+    id: font_icons    # forecast column icons
     size: 28
     glyphs:
       - "\U000F0599"  # weather-sunny
@@ -232,55 +212,52 @@ display:
     dc_pin: GPIO17
     busy_pin: GPIO4
     reset_pin: GPIO16
-    model: 7.50in-v2
-    # E-ink updates are slow; refresh every 5 minutes to avoid ghosting
+    model: 4.20in      # Waveshare 4.2" — 400x300 pixels
     update_interval: 300s
-    # Full refresh every update (partial refresh not supported on 7.50in-v2)
     lambda: |-
-      it.fill(Color(255, 255, 255));  // white background
+      it.fill(Color(255, 255, 255));
 
-      // E-ink palette: black = Color(0,0,0), white = Color(255,255,255)
       const Color BLACK = Color(0, 0, 0);
       const Color WHITE = Color(255, 255, 255);
       const Color LGRAY = Color(180, 180, 180);
 
-      // Display dimensions: 800 x 480
+      // Display dimensions: 400 x 300
       char buf[64];
 
-      // ── Current conditions header (y=0..99) ──────────────────────────────
-      it.filled_rectangle(0, 0, 800, 100, BLACK);
+      // ── Current conditions header (y=0..49, 50px) ────────────────────────
+      it.filled_rectangle(0, 0, 400, 50, BLACK);
 
-      // Large current temperature (left)
+      // Temperature — large, left-anchored, vertically centred
       if (id(weather_temp).has_state()) {
         snprintf(buf, sizeof(buf), "%.1f\xc2\xb0F", atof(id(weather_temp).state.c_str()));
-        it.print(20, 50, id(font_xl), WHITE, TextAlign::CENTER_LEFT, buf);
+        it.print(6, 25, id(font_xl), WHITE, TextAlign::CENTER_LEFT, buf);
       } else {
-        it.print(20, 50, id(font_xl), WHITE, TextAlign::CENTER_LEFT, "--.-\xc2\xb0F");
+        it.print(6, 25, id(font_xl), WHITE, TextAlign::CENTER_LEFT, "--.-\xc2\xb0F");
       }
 
-      // Current weather summary (center, below temp)
+      // Current condition summary — centred in the header
       if (id(weather_summary_current).has_state()) {
-        it.print(400, 50, id(font_large), WHITE,
+        it.print(200, 25, id(font_tiny_mid), WHITE,
                  TextAlign::CENTER, id(weather_summary_current).state.c_str());
       }
 
-      // Humidity + Wind (right side of header)
+      // Humidity + wind — top-right, stacked
       if (id(weather_humidity).has_state()) {
         snprintf(buf, sizeof(buf), "%.0f%% RH", atof(id(weather_humidity).state.c_str()));
-        it.print(780, 22, id(font_medium), WHITE, TextAlign::TOP_RIGHT, buf);
+        it.print(395, 6, id(font_tiny_mid), WHITE, TextAlign::TOP_RIGHT, buf);
       }
       {
         std::string spd = id(weather_wind_speed).has_state() ? id(weather_wind_speed).state : "--";
-        std::string dir = id(weather_wind_dir).has_state() ? id(weather_wind_dir).state : "--";
-        snprintf(buf, sizeof(buf), "%.0f mph %s", atof(spd.c_str()), dir.c_str());
-        it.print(780, 52, id(font_medium), WHITE, TextAlign::TOP_RIGHT, buf);
+        std::string dir = id(weather_wind_dir).has_state()   ? id(weather_wind_dir).state   : "--";
+        snprintf(buf, sizeof(buf), "%.0fmph %s", atof(spd.c_str()), dir.c_str());
+        it.print(395, 24, id(font_tiny_mid), WHITE, TextAlign::TOP_RIGHT, buf);
       }
 
-      // ── Section label ──────────────────────────────────────────────────
-      it.print(10, 105, id(font_tiny), BLACK, "5-DAY FORECAST");
-      it.horizontal_line(0, 118, 800, BLACK);
+      // ── Forecast section label ────────────────────────────────────────────
+      it.print(5, 53, id(font_tiny), BLACK, "5-DAY FORECAST");
+      it.horizontal_line(0, 65, 400, BLACK);
 
-      // ── Map weather summary text to MDI glyph ─────────────────────────
+      // ── Map condition text to MDI glyph ──────────────────────────────────
       auto weather_icon = [](const std::string& s) -> const char* {
         if (s.find("Thunder") != std::string::npos ||
             s.find("Lightning") != std::string::npos)   return "\U000F067E";
@@ -305,13 +282,18 @@ display:
         if (s.find("Clear") != std::string::npos ||
             s.find("Sunny") != std::string::npos ||
             s.find("Fair") != std::string::npos)        return "\U000F0599";
-        return "\U000F0590";  // default: cloudy
+        return "\U000F0590";
       };
 
-      // ── 5-day forecast columns (y=119..390, each 160px wide) ─────────
-      // Column centres: 80, 240, 400, 560, 720
+      // ── 5-day forecast columns (y=66..249) ───────────────────────────────
+      // 5 columns × 80px = 400px; centres at 40, 120, 200, 280, 360
+      //   y=68   day label   (font_small   16px)
+      //   y=87   MDI icon    (font_icons   28px, ends ~115)
+      //   y=119  H: high     (font_small   16px)
+      //   y=138  L: low      (font_small   16px)
+      //   y=157  precip %    (font_tiny_mid 14px)
       const char* day_labels[5] = {"TODAY", "DAY 2", "DAY 3", "DAY 4", "DAY 5"};
-      int cx[5] = {80, 240, 400, 560, 720};
+      int cx[5] = {40, 120, 200, 280, 360};
 
       esphome::text_sensor::TextSensor* summaries[5] = {
         id(summary_0), id(summary_1), id(summary_2), id(summary_3), id(summary_4)
@@ -326,24 +308,24 @@ display:
         id(precip_0), id(precip_1), id(precip_2), id(precip_3), id(precip_4)
       };
 
-      // Column separator lines
+      // Column separators
       for (int i = 1; i < 5; i++) {
-        it.vertical_line(i * 160, 119, 271, LGRAY);
+        it.vertical_line(i * 80, 66, 184, LGRAY);
       }
 
       for (int col = 0; col < 5; col++) {
         int x = cx[col];
 
-        // Day label
-        it.print(x, 126, id(font_medium), BLACK, TextAlign::TOP_CENTER, day_labels[col]);
+        // Day name
+        it.print(x, 68, id(font_small), BLACK, TextAlign::TOP_CENTER, day_labels[col]);
 
         // Weather icon
         if (summaries[col]->has_state()) {
-          it.print(x, 155, id(font_icons), BLACK,
+          it.print(x, 87, id(font_icons), BLACK,
                    TextAlign::TOP_CENTER, weather_icon(summaries[col]->state));
         }
 
-        // High temp
+        // High temp (col 0 uses live current temp as today's high)
         {
           bool have_hi = (col == 0)
             ? id(weather_temp).has_state()
@@ -352,63 +334,63 @@ display:
             float val = (col == 0)
               ? atof(id(weather_temp).state.c_str())
               : atof(hi_sensors[col]->state.c_str());
-            snprintf(buf, sizeof(buf), "H: %.0f\xc2\xb0", val);
-            it.print(x, 228, id(font_small), BLACK, TextAlign::TOP_CENTER, buf);
+            snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0", val);
+            it.print(x, 119, id(font_small), BLACK, TextAlign::TOP_CENTER, buf);
           } else {
-            it.print(x, 228, id(font_small), BLACK, TextAlign::TOP_CENTER, "H: --");
+            it.print(x, 119, id(font_small), BLACK, TextAlign::TOP_CENTER, "H:--");
           }
         }
 
         // Low temp
         if (lo_sensors[col] && lo_sensors[col]->has_state()) {
-          snprintf(buf, sizeof(buf), "L: %.0f\xc2\xb0",
+          snprintf(buf, sizeof(buf), "L:%.0f\xc2\xb0",
                    atof(lo_sensors[col]->state.c_str()));
-          it.print(x, 258, id(font_small), BLACK, TextAlign::TOP_CENTER, buf);
+          it.print(x, 138, id(font_small), BLACK, TextAlign::TOP_CENTER, buf);
         } else {
-          it.print(x, 258, id(font_small), BLACK, TextAlign::TOP_CENTER, "L: --");
+          it.print(x, 138, id(font_small), BLACK, TextAlign::TOP_CENTER, "L:--");
         }
 
-        // Precipitation probability
+        // Precip probability
         if (precip_sensors[col] && precip_sensors[col]->has_state()) {
-          snprintf(buf, sizeof(buf), "%.0f%% precip",
+          snprintf(buf, sizeof(buf), "%.0f%%",
                    atof(precip_sensors[col]->state.c_str()));
-          it.print(x, 290, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, buf);
+          it.print(x, 157, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, buf);
         } else {
-          it.print(x, 290, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, "--% precip");
+          it.print(x, 157, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, "--%");
         }
       }
 
-      // ── Bottom ribbon divider ─────────────────────────────────────────
-      it.horizontal_line(0, 390, 800, BLACK);
+      // ── Bottom ribbon divider (y=250) ─────────────────────────────────────
+      it.horizontal_line(0, 250, 400, BLACK);
 
-      // ── Bottom ribbon (y=391..480) ────────────────────────────────────
-      // Parse sunrise/sunset from ISO UTC timestamps → local 12h format
+      // ── Bottom ribbon (y=251..299, 49px) ─────────────────────────────────
+      // Parse ISO UTC timestamp → local 12h time string
       auto parse_time = [](const std::string& iso) -> std::string {
         if (iso.length() < 16) return "--:--";
         int hour = atoi(iso.substr(11, 2).c_str());
         int min  = atoi(iso.substr(14, 2).c_str());
-        // Convert UTC → Central Time (CST = UTC-6; adjust for DST if needed)
+        // UTC → Central Time (CST = UTC-6; adjust for CDT if needed)
         hour -= 6;
         if (hour < 0) hour += 24;
         bool pm = hour >= 12;
         if (hour > 12) hour -= 12;
         if (hour == 0) hour = 12;
         char result[10];
-        snprintf(result, sizeof(result), "%d:%02d %s", hour, min, pm ? "PM" : "AM");
+        snprintf(result, sizeof(result), "%d:%02d%s", hour, min, pm ? "p" : "a");
         return std::string(result);
       };
 
-      // Sunrise / Sunset
+      // Sunrise & sunset
       if (id(sunrise_time).has_state() && id(sunset_time).has_state()) {
         std::string rise = parse_time(id(sunrise_time).state);
         std::string set  = parse_time(id(sunset_time).state);
-        snprintf(buf, sizeof(buf), "Sunrise: %s   Sunset: %s", rise.c_str(), set.c_str());
-        it.print(20, 410, id(font_medium), BLACK, buf);
+        snprintf(buf, sizeof(buf), "Rise %s  Set %s", rise.c_str(), set.c_str());
+        it.print(5, 255, id(font_tiny_mid), BLACK, buf);
       } else {
-        it.print(20, 410, id(font_medium), BLACK, "Sunrise: --:--   Sunset: --:--");
+        it.print(5, 255, id(font_tiny_mid), BLACK, "Rise --:--  Set --:--");
       }
 
-      // Pressure + trend (right side)
+      // Pressure + trend
       {
         float current = id(pressure).has_state()
           ? atof(id(pressure).state.c_str()) : 0.0;
@@ -427,14 +409,14 @@ display:
         } else {
           snprintf(buf, sizeof(buf), "--.- inHg  %s", trend);
         }
-        it.print(780, 410, id(font_medium), BLACK, TextAlign::TOP_RIGHT, buf);
+        it.print(5, 273, id(font_tiny_mid), BLACK, buf);
       }
 
-      // Last-updated timestamp
+      // Last-updated timestamp — bottom right
       auto now = id(homeassistant_time).now();
       if (now.is_valid()) {
         snprintf(buf, sizeof(buf), "Updated %02d:%02d", now.hour, now.minute);
-        it.print(400, 455, id(font_tiny), BLACK, TextAlign::TOP_CENTER, buf);
+        it.print(395, 287, id(font_tiny), BLACK, TextAlign::TOP_RIGHT, buf);
       }
 
 # Time component (used for last-updated label)
