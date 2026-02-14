@@ -3,7 +3,7 @@ esphome:
   friendly_name: Weather E-Ink
 
 esp32:
-  board: esp32dev
+  board: esp32-s3-devkitc-1
   framework:
     type: arduino
 
@@ -28,18 +28,18 @@ wifi:
 captive_portal:
 
 # SPI bus for Waveshare 4.2" e-paper display (400x300)
-# Wiring:
+# Freenove ESP32-S3 WROOM wiring:
 #   Display VCC  -> 3.3V
 #   Display GND  -> GND
-#   Display CLK  -> GPIO18
-#   Display DIN  -> GPIO23  (MOSI)
-#   Display CS   -> GPIO5
-#   Display DC   -> GPIO17
-#   Display RST  -> GPIO16
+#   Display CLK  -> GPIO12  (FSPI CLK)
+#   Display DIN  -> GPIO11  (FSPI MOSI)
+#   Display CS   -> GPIO10
+#   Display DC   -> GPIO9
+#   Display RST  -> GPIO8
 #   Display BUSY -> GPIO4
 spi:
-  clk_pin: GPIO18
-  mosi_pin: GPIO23
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
   id: spi_bus
 
 font:
@@ -208,10 +208,10 @@ display:
   - platform: waveshare_epaper
     id: eink_display
     spi_id: spi_bus
-    cs_pin: GPIO5
-    dc_pin: GPIO17
+    cs_pin: GPIO10
+    dc_pin: GPIO9
     busy_pin: GPIO4
-    reset_pin: GPIO16
+    reset_pin: GPIO8
     model: 4.20in      # Waveshare 4.2" — 400x300 pixels
     update_interval: 300s
     lambda: |-
