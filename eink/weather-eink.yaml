@@ -46,18 +46,28 @@ font:
   - file: "gfonts://Roboto"
     id: font_xl       # current temperature
     size: 36
+    extras:
+      - glyphs: "°"
   - file: "gfonts://Roboto"
     id: font_medium   # header summary / bottom ribbon
     size: 22
+    extras:
+      - glyphs: "°"
   - file: "gfonts://Roboto"
     id: font_small    # day labels, H/L temps
     size: 16
+    extras:
+      - glyphs: "°"
   - file: "gfonts://Roboto"
     id: font_tiny_mid # humidity, wind, precip %, section text
     size: 14
+    extras:
+      - glyphs: "°"
   - file: "gfonts://Roboto"
     id: font_tiny     # section labels, updated timestamp
     size: 11
+    extras:
+      - glyphs: "°"
   # MDI weather icons — only the glyphs we actually use are compiled in
   - file: "materialdesignicons-webfont.ttf"
     id: font_icons    # forecast column icons
