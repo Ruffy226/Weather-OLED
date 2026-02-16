@@ -2,13 +2,6 @@ esphome:
   name: weather-eink
   friendly_name: Weather E-Ink
 
-# Waveshare 4.2" Rev 2.2 uses the SSD1683 controller — not UC8176/IL0398.
-# ESPHome PR #6209 adds the correct driver (model: 4.20in-v2).
-# Remove this block once the PR is merged into mainline ESPHome.
-external_components:
-  - source: github://pr#6209
-    components: [waveshare_epaper]
-
 esp32:
   board: esp32-s3-devkitc-1
   framework:
@@ -234,8 +227,8 @@ display:
     dc_pin: GPIO9
     busy_pin: GPIO4
     reset_pin: GPIO8
-    reset_duration: 2ms  # required for Rev 2.2 / SSD1683 controller
-    model: 4.20in-v2     # Rev 2.2 uses SSD1683; bv2 targets UC8176 (wrong chip)
+    reset_duration: 2ms  # required for SSD1683 controller
+    model: gdey042t81    # GoodDisplay GDEY042T81 — same SSD1683 chip as Rev 2.2
     update_interval: 300s
     lambda: |-
       it.fill(Color(255, 255, 255));
