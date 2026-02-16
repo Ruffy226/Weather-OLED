@@ -264,7 +264,7 @@ display:
 
       // Temperature
       if (id(weather_temp).has_state()) {
-        snprintf(buf, sizeof(buf), "%.1f°", atof(id(weather_temp).state.c_str()));
+        snprintf(buf, sizeof(buf), "%.0f°", atof(id(weather_temp).state.c_str()));
         it.print(5, 16, id(font_medium), Color(0, 220, 255), buf);
       } else {
         it.print(5, 16, id(font_medium), Color(80, 80, 80), "--.-°");
