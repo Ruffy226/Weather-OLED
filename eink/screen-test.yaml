@@ -47,14 +47,14 @@ display:
     dc_pin: GPIO9
     busy_pin: GPIO4
     reset_pin: GPIO8
-    model: 4.2in        # try this first; if blank, try 4.20in-bv2
+    model: 4.20in-bv2   # confirmed from logs: "4.2in (B V2)"
     update_interval: 10s
     lambda: |-
-      it.fill(COLOR_ON);                              // white background
-      it.print(10, 10,  id(font_large), COLOR_OFF, "SCREEN TEST");
-      it.print(10, 80,  id(font_mid),   COLOR_OFF, "If you see this,");
-      it.print(10, 120, id(font_mid),   COLOR_OFF, "the display works!");
-      it.print(10, 200, id(font_small), COLOR_OFF, "model: 4.2in");
+      it.fill(COLOR_OFF);                             // white background
+      it.print(10, 10,  id(font_large), COLOR_ON, "SCREEN TEST");
+      it.print(10, 80,  id(font_mid),   COLOR_ON, "If you see this,");
+      it.print(10, 120, id(font_mid),   COLOR_ON, "the display works!");
+      it.print(10, 200, id(font_small), COLOR_ON, "model: 4.20in-bv2");
 
 font:
   - file: "gfonts://Roboto"
