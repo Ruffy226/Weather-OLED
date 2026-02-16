@@ -338,7 +338,14 @@ display:
         return "\U000F0590"; // default: cloudy
       };
 
-      const char* day_labels[5] = {"FRI", "SAT", "SUN", "MON", "TUE"};
+      // Build day labels starting from today
+      const char* all_days[7] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+      auto now_t = id(homeassistant_time).now();
+      int today_dow = now_t.is_valid() ? (now_t.day_of_week - 1) : 0; // 0=Sun..6=Sat
+      const char* day_labels[5];
+      for (int i = 0; i < 5; i++) {
+        day_labels[i] = all_days[(today_dow + i) % 7];
+      }
       int cx[5] = {32, 96, 160, 224, 288};  // column centres
 
       esphome::text_sensor::TextSensor* summaries[5] = {
