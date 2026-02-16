@@ -1,0 +1,70 @@
+esphome:
+  name: weather-eink
+  friendly_name: Weather E-Ink
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+logger:
+
+api:
+  encryption:
+    key: !secret weather_display_api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    ssid: "Weather-EInk-Fallback"
+    password: !secret fallback_password
+
+captive_portal:
+
+# Freenove ESP32-S3 WROOM wiring:
+#   Display CLK  -> GPIO12  (FSPI CLK)
+#   Display DIN  -> GPIO11  (FSPI MOSI)
+#   Display CS   -> GPIO10
+#   Display DC   -> GPIO9
+#   Display RST  -> GPIO8
+#   Display BUSY -> GPIO4
+
+spi:
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
+  id: spi_bus
+
+display:
+  - platform: waveshare_epaper
+    spi_id: spi_bus
+    cs_pin: GPIO10
+    dc_pin: GPIO9
+    busy_pin: GPIO4
+    reset_pin: GPIO8
+    model: 4.2in        # try this first; if blank, try 4.20in-bv2
+    update_interval: 10s
+    lambda: |-
+      it.fill(COLOR_ON);                              // white background
+      it.print(10, 10,  id(font_large), COLOR_OFF, "SCREEN TEST");
+      it.print(10, 80,  id(font_mid),   COLOR_OFF, "If you see this,");
+      it.print(10, 120, id(font_mid),   COLOR_OFF, "the display works!");
+      it.print(10, 200, id(font_small), COLOR_OFF, "model: 4.2in");
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_large
+    size: 48
+
+  - file: "gfonts://Roboto"
+    id: font_mid
+    size: 32
+
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 24
