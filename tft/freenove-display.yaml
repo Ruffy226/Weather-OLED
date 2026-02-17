@@ -138,8 +138,11 @@ text_sensor:
     id: summary_4
     entity_id: sensor.kianevad37_weather_summary_4
     internal: true
-  # ── Forecast high temps (_0d=Fri _2d=Sat _4d=Sun _6d=Mon _8d=Tue) ───────
-  # Fri high = current temperature (no separate "today high" entity)
+  # ── Forecast high temps (_0d=today _2d=day2 _4d=day3 _6d=day4 _8d=day5) ─
+  - platform: homeassistant
+    id: hi_0
+    entity_id: sensor.kianevad37_forecast_temperature_0d
+    internal: true
   - platform: homeassistant
     id: hi_1
     entity_id: sensor.kianevad37_forecast_temperature_2d
@@ -264,7 +267,7 @@ display:
 
       // Temperature
       if (id(weather_temp).has_state()) {
-        snprintf(buf, sizeof(buf), "%.1f°", atof(id(weather_temp).state.c_str()));
+        snprintf(buf, sizeof(buf), "%.0f°", atof(id(weather_temp).state.c_str()));
         it.print(5, 16, id(font_medium), Color(0, 220, 255), buf);
       } else {
         it.print(5, 16, id(font_medium), Color(80, 80, 80), "--.-°");
@@ -338,14 +341,21 @@ display:
         return "\U000F0590"; // default: cloudy
       };
 
-      const char* day_labels[5] = {"FRI", "SAT", "SUN", "MON", "TUE"};
+      // Build day labels starting from today
+      const char* all_days[7] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+      auto now_t = id(homeassistant_time).now();
+      int today_dow = now_t.is_valid() ? (now_t.day_of_week - 1) : 0; // 0=Sun..6=Sat
+      const char* day_labels[5];
+      for (int i = 0; i < 5; i++) {
+        day_labels[i] = all_days[(today_dow + i) % 7];
+      }
       int cx[5] = {32, 96, 160, 224, 288};  // column centres
 
       esphome::text_sensor::TextSensor* summaries[5] = {
         id(summary_0), id(summary_1), id(summary_2), id(summary_3), id(summary_4)
       };
       esphome::text_sensor::TextSensor* hi_sensors[5] = {
-        nullptr, id(hi_1), id(hi_2), id(hi_3), id(hi_4)
+        id(hi_0), id(hi_1), id(hi_2), id(hi_3), id(hi_4)
       };
       esphome::text_sensor::TextSensor* lo_sensors[5] = {
         id(lo_0), id(lo_1), id(lo_2), id(lo_3), id(lo_4)
@@ -367,22 +377,15 @@ display:
                    TextAlign::TOP_CENTER, weather_icon(summaries[col]->state));
         }
 
-        // High temp — centred (col 0 uses live current temp)
-        {
-          bool have_hi = (col == 0)
-            ? id(weather_temp).has_state()
-            : (hi_sensors[col] && hi_sensors[col]->has_state());
-          if (have_hi) {
-            float val = (col == 0)
-              ? atof(id(weather_temp).state.c_str())
-              : atof(hi_sensors[col]->state.c_str());
-            snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0", val);
-            it.print(x, 133, id(font_tiny_mid), Color(255, 120, 60),
-                     TextAlign::TOP_CENTER, buf);
-          } else {
-            it.print(x, 133, id(font_tiny_mid), Color(80, 80, 80),
-                     TextAlign::TOP_CENTER, "H:--");
-          }
+        // High temp — forecast high for all 5 days
+        if (hi_sensors[col] && hi_sensors[col]->has_state()) {
+          snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0",
+                   atof(hi_sensors[col]->state.c_str()));
+          it.print(x, 133, id(font_tiny_mid), Color(255, 120, 60),
+                   TextAlign::TOP_CENTER, buf);
+        } else {
+          it.print(x, 133, id(font_tiny_mid), Color(80, 80, 80),
+                   TextAlign::TOP_CENTER, "H:--");
         }
 
         // Low temp — centred
