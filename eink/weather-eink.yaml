@@ -5,7 +5,7 @@ esphome:
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    type: arduino
+    type: esp-idf
 
 logger:
 
@@ -152,7 +152,11 @@ text_sensor:
     id: summary_4
     entity_id: sensor.kianevad37_weather_summary_4
     internal: true
-  # ── Forecast high temps ──────────────────────────────────────────────────
+  # ── Forecast high temps (_0d=today _2d=day2 _4d=day3 _6d=day4 _8d=day5) ─
+  - platform: homeassistant
+    id: hi_0
+    entity_id: sensor.kianevad37_forecast_temperature_0d
+    internal: true
   - platform: homeassistant
     id: hi_1
     entity_id: sensor.kianevad37_forecast_temperature_2d
@@ -169,7 +173,7 @@ text_sensor:
     id: hi_4
     entity_id: sensor.kianevad37_forecast_temperature_8d
     internal: true
-  # ── Forecast low temps ───────────────────────────────────────────────────
+  # ── Forecast low temps (_1n=tonight _3n=day2 _5n=day3 _7n=day4 _9n=day5) ─
   - platform: homeassistant
     id: lo_0
     entity_id: sensor.kianevad37_forecast_temperature_1n
@@ -227,7 +231,9 @@ display:
     dc_pin: GPIO9
     busy_pin: GPIO4
     reset_pin: GPIO8
-    model: 4.20in-bv2  # Waveshare 4.2" V2 — 400x300 pixels
+    full_update_every: 1
+    reset_duration: 2ms  # required for SSD1683 controller
+    model: gdey042t81    # GoodDisplay GDEY042T81 — same SSD1683 chip as Rev 2.2
     update_interval: 300s
     lambda: |-
       it.fill(Color(255, 255, 255));
@@ -244,16 +250,10 @@ display:
 
       // Temperature — large, left-anchored, vertically centred
       if (id(weather_temp).has_state()) {
-        snprintf(buf, sizeof(buf), "%.1f\xc2\xb0F", atof(id(weather_temp).state.c_str()));
+        snprintf(buf, sizeof(buf), "%.0f\xc2\xb0""F", atof(id(weather_temp).state.c_str()));
         it.print(6, 25, id(font_xl), WHITE, TextAlign::CENTER_LEFT, buf);
       } else {
-        it.print(6, 25, id(font_xl), WHITE, TextAlign::CENTER_LEFT, "--.-\xc2\xb0F");
-      }
-
-      // Current condition summary — centred in the header
-      if (id(weather_summary_current).has_state()) {
-        it.print(200, 25, id(font_tiny_mid), WHITE,
-                 TextAlign::CENTER, id(weather_summary_current).state.c_str());
+        it.print(6, 25, id(font_xl), WHITE, TextAlign::CENTER_LEFT, "--\xc2\xb0""F");
       }
 
       // Humidity + wind — top-right, stacked
@@ -301,7 +301,7 @@ display:
       };
 
       // ── 5-day forecast columns (y=66..249) ───────────────────────────────
-      // 5 columns × 80px = 400px; centres at 40, 120, 200, 280, 360
+      // 5 columns x 80px = 400px; centres at 40, 120, 200, 280, 360
       //   y=68   day label   (font_small   16px)
       //   y=87   MDI icon    (font_icons   28px, ends ~115)
       //   y=119  H: high     (font_small   16px)
@@ -314,7 +314,7 @@ display:
         id(summary_0), id(summary_1), id(summary_2), id(summary_3), id(summary_4)
       };
       esphome::text_sensor::TextSensor* hi_sensors[5] = {
-        nullptr, id(hi_1), id(hi_2), id(hi_3), id(hi_4)
+        id(hi_0), id(hi_1), id(hi_2), id(hi_3), id(hi_4)
       };
       esphome::text_sensor::TextSensor* lo_sensors[5] = {
         id(lo_0), id(lo_1), id(lo_2), id(lo_3), id(lo_4)
@@ -340,20 +340,13 @@ display:
                    TextAlign::TOP_CENTER, weather_icon(summaries[col]->state));
         }
 
-        // High temp (col 0 uses live current temp as today's high)
-        {
-          bool have_hi = (col == 0)
-            ? id(weather_temp).has_state()
-            : (hi_sensors[col] && hi_sensors[col]->has_state());
-          if (have_hi) {
-            float val = (col == 0)
-              ? atof(id(weather_temp).state.c_str())
-              : atof(hi_sensors[col]->state.c_str());
-            snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0", val);
-            it.print(x, 119, id(font_small), BLACK, TextAlign::TOP_CENTER, buf);
-          } else {
-            it.print(x, 119, id(font_small), BLACK, TextAlign::TOP_CENTER, "H:--");
-          }
+        // High temp — forecast high for all 5 days
+        if (hi_sensors[col] && hi_sensors[col]->has_state()) {
+          snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0",
+                   atof(hi_sensors[col]->state.c_str()));
+          it.print(x, 119, id(font_small), BLACK, TextAlign::TOP_CENTER, buf);
+        } else {
+          it.print(x, 119, id(font_small), BLACK, TextAlign::TOP_CENTER, "H:--");
         }
 
         // Low temp
@@ -375,16 +368,35 @@ display:
         }
       }
 
+      // ── Current condition detail — centered below forecast ───────────────
+      if (id(weather_summary_current).has_state()) {
+        std::string summary = id(weather_summary_current).state;
+        size_t split_pos = 40;
+        if (summary.length() > split_pos) {
+          size_t space_pos = summary.rfind(' ', split_pos);
+          if (space_pos != std::string::npos) {
+            std::string line1 = summary.substr(0, space_pos);
+            std::string line2 = summary.substr(space_pos + 1);
+            it.print(200, 203, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, line1.c_str());
+            it.print(200, 220, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, line2.c_str());
+          } else {
+            it.print(200, 208, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, summary.c_str());
+          }
+        } else {
+          it.print(200, 208, id(font_tiny_mid), BLACK, TextAlign::TOP_CENTER, summary.c_str());
+        }
+      }
+
       // ── Bottom ribbon divider (y=250) ─────────────────────────────────────
       it.horizontal_line(0, 250, 400, BLACK);
 
       // ── Bottom ribbon (y=251..299, 49px) ─────────────────────────────────
-      // Parse ISO UTC timestamp → local 12h time string
+      // Parse ISO UTC timestamp to local 12h time string
       auto parse_time = [](const std::string& iso) -> std::string {
         if (iso.length() < 16) return "--:--";
         int hour = atoi(iso.substr(11, 2).c_str());
         int min  = atoi(iso.substr(14, 2).c_str());
-        // UTC → Central Time (CST = UTC-6; adjust for CDT if needed)
+        // UTC to Central Time (CST = UTC-6; adjust for CDT if needed)
         hour -= 6;
         if (hour < 0) hour += 24;
         bool pm = hour >= 12;
@@ -438,3 +450,4 @@ display:
 time:
   - platform: homeassistant
     id: homeassistant_time
+    timezone: America/Chicago
