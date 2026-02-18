@@ -46,7 +46,6 @@ light:
     name: "Onboard RGB LED"
     pin: GPIO38
     num_leds: 1
-    rmt_channel: 0
     chipset: WS2812
     rgb_order: GRB
     restore_mode: ALWAYS_OFF
