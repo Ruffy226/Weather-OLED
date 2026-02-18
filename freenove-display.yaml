@@ -41,13 +41,13 @@ output:
     frequency: 1000Hz
 # Onboard RGB LED (WS2812, GPIO38)
 light:
-  - platform: esp32_rmt_led_strip
+  - platform: neopixelbus
     id: onboard_rgb
     name: "Onboard RGB LED"
     pin: GPIO38
     num_leds: 1
-    chipset: WS2812
-    rgb_order: GRB
+    type: GRB
+    variant: WS2812
     restore_mode: ALWAYS_OFF
 spi:
   clk_pin: GPIO12
