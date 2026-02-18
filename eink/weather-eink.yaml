@@ -226,7 +226,6 @@ light:
     id: onboard_led
     pin: GPIO38
     num_leds: 1
-    rmt_channel: 0
     rgb_order: GRB
     chipset: WS2812
     name: "Onboard LED"
