@@ -1,6 +1,9 @@
 esphome:
   name: weather-eink
   friendly_name: Weather E-Ink
+  on_boot:
+    then:
+      - light.turn_off: onboard_led
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -216,6 +219,20 @@ text_sensor:
     entity_id: sensor.kianevad37_precipitation_probability_8d
     internal: true
 
+# Onboard WS2812 RGB LED (GPIO38 on Freenove ESP32-S3 WROOM)
+# Set to ALWAYS_OFF so it doesn't flash bright white/blue on boot
+light:
+  - platform: esp32_rmt_led_strip
+    id: onboard_led
+    pin: GPIO38
+    num_leds: 1
+    rmt_channel: 0
+    rgb_order: GRB
+    chipset: WS2812
+    name: "Onboard LED"
+    internal: true
+    restore_mode: ALWAYS_OFF
+
 # Track last pressure reading for trend calculation
 globals:
   - id: pressure_last
@@ -307,7 +324,14 @@ display:
       //   y=119  H: high     (font_small   16px)
       //   y=138  L: low      (font_small   16px)
       //   y=157  precip %    (font_tiny_mid 14px)
-      const char* day_labels[5] = {"TODAY", "DAY 2", "DAY 3", "DAY 4", "DAY 5"};
+      // Build day labels starting from today using the real day-of-week
+      const char* all_days[7] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+      auto now_t = id(homeassistant_time).now();
+      int today_dow = now_t.is_valid() ? (now_t.day_of_week - 1) : 0; // 0=Sun..6=Sat
+      const char* day_labels[5];
+      for (int i = 0; i < 5; i++) {
+        day_labels[i] = all_days[(today_dow + i) % 7];
+      }
       int cx[5] = {40, 120, 200, 280, 360};
 
       esphome::text_sensor::TextSensor* summaries[5] = {
