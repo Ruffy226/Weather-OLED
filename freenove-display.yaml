@@ -39,6 +39,17 @@ output:
     pin: GPIO14
     id: display_backlight
     frequency: 1000Hz
+# Onboard RGB LED (WS2812, GPIO38)
+light:
+  - platform: esp32_rmt_led_strip
+    id: onboard_rgb
+    name: "Onboard RGB LED"
+    pin: GPIO38
+    num_leds: 1
+    rmt_channel: 0
+    chipset: WS2812
+    rgb_order: GRB
+    restore_mode: ALWAYS_OFF
 spi:
   clk_pin: GPIO12
   mosi_pin: GPIO11
@@ -117,7 +128,7 @@ text_sensor:
     id: pressure
     entity_id: sensor.kianevad37_pressure
     internal: true
-  # ── 5-day forecast summaries (_0=Fri _1=Sat _2=Sun _3=Mon _4=Tue) ───────
+  # ── 5-day forecast summaries (_0=today _1=day2 _2=day3 _3=day4 _4=day5) ─
   - platform: homeassistant
     id: summary_0
     entity_id: sensor.kianevad37_weather_summary_0
@@ -138,8 +149,11 @@ text_sensor:
     id: summary_4
     entity_id: sensor.kianevad37_weather_summary_4
     internal: true
-  # ── Forecast high temps (_0d=Fri _2d=Sat _4d=Sun _6d=Mon _8d=Tue) ───────
-  # Fri high = current temperature (no separate "today high" entity)
+  # ── Forecast high temps (_0d=today _2d=day2 _4d=day3 _6d=day4 _8d=day5) ─
+  - platform: homeassistant
+    id: hi_0
+    entity_id: sensor.kianevad37_forecast_temperature_0d
+    internal: true
   - platform: homeassistant
     id: hi_1
     entity_id: sensor.kianevad37_forecast_temperature_2d
@@ -156,7 +170,7 @@ text_sensor:
     id: hi_4
     entity_id: sensor.kianevad37_forecast_temperature_8d
     internal: true
-  # ── Forecast low temps / night (_1d=Fri night _3d=Sat _5d=Sun _7d=Mon _9d=Tue) ──
+  # ── Forecast low temps (_1n=tonight _3n=day2 _5n=day3 _7n=day4 _9n=day5) ─
   - platform: homeassistant
     id: lo_0
     entity_id: sensor.kianevad37_forecast_temperature_1n
@@ -267,7 +281,7 @@ display:
         snprintf(buf, sizeof(buf), "%.0f°", atof(id(weather_temp).state.c_str()));
         it.print(5, 16, id(font_medium), Color(0, 220, 255), buf);
       } else {
-        it.print(5, 16, id(font_medium), Color(80, 80, 80), "--.-°");
+        it.print(5, 16, id(font_medium), Color(80, 80, 80), "--°");
       }
 
       // Humidity
@@ -352,7 +366,7 @@ display:
         id(summary_0), id(summary_1), id(summary_2), id(summary_3), id(summary_4)
       };
       esphome::text_sensor::TextSensor* hi_sensors[5] = {
-        nullptr, id(hi_1), id(hi_2), id(hi_3), id(hi_4)
+        id(hi_0), id(hi_1), id(hi_2), id(hi_3), id(hi_4)
       };
       esphome::text_sensor::TextSensor* lo_sensors[5] = {
         id(lo_0), id(lo_1), id(lo_2), id(lo_3), id(lo_4)
@@ -374,22 +388,15 @@ display:
                    TextAlign::TOP_CENTER, weather_icon(summaries[col]->state));
         }
 
-        // High temp — centred (col 0 uses live current temp)
-        {
-          bool have_hi = (col == 0)
-            ? id(weather_temp).has_state()
-            : (hi_sensors[col] && hi_sensors[col]->has_state());
-          if (have_hi) {
-            float val = (col == 0)
-              ? atof(id(weather_temp).state.c_str())
-              : atof(hi_sensors[col]->state.c_str());
-            snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0", val);
-            it.print(x, 133, id(font_tiny_mid), Color(255, 120, 60),
-                     TextAlign::TOP_CENTER, buf);
-          } else {
-            it.print(x, 133, id(font_tiny_mid), Color(80, 80, 80),
-                     TextAlign::TOP_CENTER, "H:--");
-          }
+        // High temp — forecast high for all 5 days
+        if (hi_sensors[col] && hi_sensors[col]->has_state()) {
+          snprintf(buf, sizeof(buf), "H:%.0f\xc2\xb0",
+                   atof(hi_sensors[col]->state.c_str()));
+          it.print(x, 133, id(font_tiny_mid), Color(255, 120, 60),
+                   TextAlign::TOP_CENTER, buf);
+        } else {
+          it.print(x, 133, id(font_tiny_mid), Color(80, 80, 80),
+                   TextAlign::TOP_CENTER, "H:--");
         }
 
         // Low temp — centred
